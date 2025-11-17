@@ -2,7 +2,7 @@ defmodule MDExKatex.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/leandrocp/mdex_katex"
-  @version "0.1.0-dev"
+  @version "0.1.0"
 
   def project do
     [

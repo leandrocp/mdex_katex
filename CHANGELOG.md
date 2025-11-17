@@ -1,6 +1,5 @@
 # Changelog
 
-## 0.1.0-dev - Unreleased
+## 0.1.0 - 2025-11-17
 
-### Added
-- Katex plugin
+Initial release.
