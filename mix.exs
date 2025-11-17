@@ -16,7 +16,7 @@ defmodule MDExKatex.MixProject do
       aliases: aliases(),
       name: "MDExKatex",
       source_url: @source_url,
-      description: "MDEx plugin for KaTeX (math formulas)",
+      description: "MDEx plugin for KaTeX (math formulas)"
     ]
   end
 
@@ -30,7 +30,8 @@ defmodule MDExKatex.MixProject do
     [
       preferred_envs: [
         docs: :docs,
-        "hex.publish": :docs
+        "hex.publish": :docs,
+        quality: :test
       ]
     ]
   end
@@ -82,7 +83,8 @@ defmodule MDExKatex.MixProject do
 
   defp aliases do
     [
-      setup: ["deps.get", "compile"]
+      setup: ["deps.get", "compile"],
+      quality: ["format", "test"]
     ]
   end
 end

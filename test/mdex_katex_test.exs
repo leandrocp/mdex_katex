@@ -18,12 +18,18 @@ defmodule MDExKatexTest do
     html = MDEx.to_html!(document)
 
     # Check that KaTeX CSS and JS are loaded
-    assert html =~ ~s(<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">)
-    assert html =~ ~s(<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>)
-    assert html =~ ~s(<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js")
+    assert html =~
+             ~s(<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">)
+
+    assert html =~
+             ~s(<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>)
+
+    assert html =~
+             ~s(<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js")
 
     # Check that the div is created with correct attributes and escaped LaTeX
-    assert html =~ ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
+    assert html =~
+             ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
 
     # Check that the formula is in the output
     assert html =~ "E = mc^2"
@@ -57,7 +63,9 @@ defmodule MDExKatexTest do
 
     refute html =~ "<script"
     refute html =~ "<link"
-    assert html =~ ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
+
+    assert html =~
+             ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
   end
 
   test "nil init uses default init", %{document: document} do
@@ -75,7 +83,9 @@ defmodule MDExKatexTest do
 
     html = MDEx.to_html!(document)
 
-    assert html =~ ~s(<div id="custom-1" class="formula" data-type="math" data-latex="E = mc^2"></div>)
+    assert html =~
+             ~s(<div id="custom-1" class="formula" data-type="math" data-latex="E = mc^2"></div>)
+
     refute html =~ ~s(phx-update="ignore")
   end
 
@@ -116,8 +126,12 @@ defmodule MDExKatexTest do
       |> MDEx.to_html!()
 
     assert html =~ ~s(<div id="formula-1" class="katex-block" data-latex="E = mc^2"></div>)
-    assert html =~ ~s(<div id="formula-2" class="katex-block" data-latex="\\int_0^\\infty e^{-x} dx = 1"></div>)
-    assert html =~ ~s(<div id="formula-3" class="katex-block" data-latex="x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}"></div>)
+
+    assert html =~
+             ~s(<div id="formula-2" class="katex-block" data-latex="\\int_0^\\infty e^{-x} dx = 1"></div>)
+
+    assert html =~
+             ~s(<div id="formula-3" class="katex-block" data-latex="x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}"></div>)
   end
 
   test "combined custom options", %{document: document} do
@@ -256,7 +270,9 @@ defmodule MDExKatexTest do
       |> MDExKatex.attach()
       |> MDEx.to_html!()
 
-    assert html =~ ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
+    assert html =~
+             ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
+
     assert html =~ "cdn.jsdelivr.net/npm/katex"
   end
 
@@ -280,9 +296,14 @@ defmodule MDExKatexTest do
       |> MDExKatex.attach()
       |> MDEx.to_html!()
 
-    assert html =~ ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
-    assert html =~ ~s(<div id="katex-2" class="katex-block" phx-update="ignore" data-latex="F = ma"></div>)
-    assert html =~ ~s(<div id="katex-3" class="katex-block" phx-update="ignore" data-latex="x = \\frac{-b}{2a}"></div>)
+    assert html =~
+             ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-latex="E = mc^2"></div>)
+
+    assert html =~
+             ~s(<div id="katex-2" class="katex-block" phx-update="ignore" data-latex="F = ma"></div>)
+
+    assert html =~
+             ~s(<div id="katex-3" class="katex-block" phx-update="ignore" data-latex="x = \\frac{-b}{2a}"></div>)
   end
 
   test "katex fence with custom attributes" do
@@ -299,6 +320,7 @@ defmodule MDExKatexTest do
       |> MDExKatex.attach(katex_block_attrs: block_attrs)
       |> MDEx.to_html!()
 
-    assert html =~ ~s(<div id="formula-1" class="math-formula" data-latex="\\sum_{i=1}^{n} i"></div>)
+    assert html =~
+             ~s(<div id="formula-1" class="math-formula" data-latex="\\sum_{i=1}^{n} i"></div>)
   end
 end
