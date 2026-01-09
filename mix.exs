@@ -77,7 +77,7 @@ defmodule MDExKatex.MixProject do
     if path = System.get_env("MDEX_PATH") do
       {:mdex, path: path}
     else
-      {:mdex, "~> 0.9"}
+      {:mdex, ">= 0.9.0"}
     end
   end
 
