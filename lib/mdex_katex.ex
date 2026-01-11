@@ -15,10 +15,18 @@ defmodule MDExKatex do
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll('.katex-block').forEach(el => {
-        const latex = el.dataset.latex;
-        if (latex) {
-          katex.render(latex, el, {
+        const latexBlock = el.dataset.latexBlock;
+        if (latexBlock) {
+          katex.render(latexBlock, el, {
             displayMode: true,
+            throwOnError: false,
+            trust: true
+          });
+        }
+        const latexInline = el.dataset.latexInline;
+        if (latexInline) {
+          katex.render(latexInline, el, {
+            displayMode: false,
             throwOnError: false,
             trust: true
           });
@@ -35,7 +43,7 @@ defmodule MDExKatex do
 
   - KaTeX is loaded from https://www.jsdelivr.com/package/npm/katex
   - Renders mathematical expressions using LaTeX syntax
-  - Recognizes both `math` and `katex` code fences
+  - Recognizes both `math` and `katex` code fences, and inline dollar math when the extension option `dollar_math` is true.
 
   ## Options
     - `:katex_block_attrs` (`t:katex_block_attrs/0`) - Function that generates the `<div>` tag attributes for math code blocks.
@@ -69,10 +77,18 @@ defmodule MDExKatex do
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll('.katex-block').forEach(el => {
-        const latex = el.dataset.latex;
-        if (latex) {
-          katex.render(latex, el, {
+        const latexBlock = el.dataset.latexBlock;
+        if (latexBlock) {
+          katex.render(latexBlock, el, {
             displayMode: true,
+            throwOnError: false,
+            trust: true
+          });
+        }
+        const latexInline = el.dataset.latexInline;
+        if (latexInline) {
+          katex.render(latexInline, el, {
+            displayMode: false,
             throwOnError: false,
             trust: true
           });
@@ -94,7 +110,7 @@ defmodule MDExKatex do
   The output includes all necessary scripts and can be used directly:
 
   ```elixir
-  html = MDEx.new(markdown: markdown) |> MDExKatex.attach() |> MDEx.to_html!()
+  html = MDEx.new(markdown: markdown, extension: [dollar_math: true]) |> MDExKatex.attach() |> MDEx.to_html!()
   File.write!("output.html", html)
   ```
 
@@ -138,10 +154,18 @@ defmodule MDExKatex do
       mounted() {
         const elements = this.el.querySelectorAll('.katex-block');
         elements.forEach(el => {
-          const latex = el.dataset.latex;
-          if (latex) {
-            katex.render(latex, el, {
+          const latexBlock = el.dataset.latexBlock;
+          if (latexBlock) {
+            katex.render(latexBlock, el, {
               displayMode: true,
+              throwOnError: false,
+              trust: true
+            });
+          }
+          const latexInline = el.dataset.latexInline;
+          if (latexInline) {
+            katex.render(latexInline, el, {
+              displayMode: false,
               throwOnError: false,
               trust: true
             });
@@ -158,7 +182,7 @@ defmodule MDExKatex do
 
   ```elixir
   html =
-    MDEx.new(markdown: markdown)
+    MDEx.new(markdown: markdown, extension: [dollar_math: true])
     |> MDExKatex.attach(
       katex_init: "", # already initialized
       katex_block_attrs: fn seq ->
@@ -221,8 +245,14 @@ defmodule MDExKatex do
         %MDEx.CodeBlock{info: info} = node, acc when info in ["math", "katex"] ->
           # Escape HTML entities in LaTeX to prevent XSS
           escaped_latex = node.literal |> String.trim() |> escape_html()
-          div = "<div #{block_attrs.(acc)} data-latex=\"#{escaped_latex}\"></div>"
+          div = "<div #{block_attrs.(acc)} data-latex-block=\"#{escaped_latex}\"></div>"
           node = %MDEx.HtmlBlock{literal: div, nodes: node.nodes}
+          {node, acc + 1}
+
+        %MDEx.Math{dollar_math: true} = node, acc ->
+          escaped_latex = node.literal |> String.trim() |> escape_html()
+          span = "<span #{block_attrs.(acc)} data-latex-inline=\"#{escaped_latex}\"></span>"
+          node =  %MDEx.HtmlInline{literal: span}
           {node, acc + 1}
 
         node, acc ->
