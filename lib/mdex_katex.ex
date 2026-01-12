@@ -252,7 +252,7 @@ defmodule MDExKatex do
         %MDEx.Math{dollar_math: true} = node, acc ->
           escaped_latex = node.literal |> String.trim() |> escape_html()
           span = "<span #{block_attrs.(acc)} data-latex-inline=\"#{escaped_latex}\"></span>"
-          node =  %MDEx.HtmlInline{literal: span}
+          node = %MDEx.HtmlInline{literal: span}
           {node, acc + 1}
 
         node, acc ->
