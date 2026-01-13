@@ -164,7 +164,7 @@ defmodule MDExKatex do
 
   ```elixir
   html =
-    MDEx.new(markdown: markdown, extension: [dollar_math: true])
+    MDEx.new(markdown: markdown, extension: [math_dollars: true])
     |> MDExKatex.attach(
       katex_init: "", # already initialized
       katex_block_attrs: fn seq ->
