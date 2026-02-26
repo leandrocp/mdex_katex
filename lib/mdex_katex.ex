@@ -18,7 +18,7 @@ defmodule MDExKatex do
         const latex = el.dataset.latex;
         const mathStyle = el.dataset.mathStyle;
         if (latex && mathStyle) {
-          displayMode = mathStyle == "display" ? true : false
+          const displayMode = mathStyle == "display" ? true : false
           katex.render(latex, el, {
             displayMode: displayMode,
             throwOnError: false,
@@ -74,7 +74,7 @@ defmodule MDExKatex do
         const latex = el.dataset.latex;
         const mathStyle = el.dataset.mathStyle;
         if (latex && mathStyle) {
-          displayMode = mathStyle == "display" ? true : false
+          const displayMode = mathStyle == "display" ? true : false
           katex.render(latex, el, {
             displayMode: displayMode,
             throwOnError: false,
@@ -98,7 +98,7 @@ defmodule MDExKatex do
   The output includes all necessary scripts and can be used directly:
 
   ```elixir
-  html = MDEx.new(markdown: markdown, extension: [dollar_math: true]) |> MDExKatex.attach() |> MDEx.to_html!()
+  html = MDEx.new(markdown: markdown, extension: [math_dollars: true]) |> MDExKatex.attach() |> MDEx.to_html!()
   File.write!("output.html", html)
   ```
 
@@ -145,7 +145,7 @@ defmodule MDExKatex do
           const latex = el.dataset.latex;
           const mathStyle = el.dataset.mathStyle;
           if (latex && mathStyle) {
-            displayMode = mathStyle == "display" ? true : false
+            const displayMode = mathStyle == "display" ? true : false
             katex.render(latex, el, {
               displayMode: displayMode,
               throwOnError: false,
