@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 - 2026-03-10
+
+### Added
+- Render inline math (@nefty)
+
 ## 0.1.1 - 2026-01-09
 
 ### Changed
