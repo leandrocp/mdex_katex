@@ -4,7 +4,8 @@ MDExKatex is a plugin for [MDEx](https://hex.pm/packages/mdex) that enables rend
 
 **Key Facts:**
 - Supports both `math` and `katex` code fences
-- Generates `<div>` elements with `data-latex` attributes
+- Supports dollar math when `MDEx` enables `extension: [math_dollars: true]`
+- Generates display `<div>` elements and inline `<span>` elements with `data-latex` attributes
 - Requires KaTeX CSS and JavaScript for rendering
 - Works with static HTML and Phoenix LiveView
 - Client-side rendering via JavaScript
@@ -44,12 +45,17 @@ The main function is `MDExKatex.attach/2` which attaches the plugin to an MDEx d
 
 ````elixir
 markdown = """
+In text, Euler's identity is $e^{i\\pi} + 1 = 0$.
+
 ```math
 E = mc^2
 ```
 """
 
-mdex = MDEx.new(markdown: markdown) |> MDExKatex.attach()
+mdex =
+  MDEx.new(markdown: markdown, extension: [math_dollars: true])
+  |> MDExKatex.attach()
+
 html = MDEx.to_html!(mdex)
 ````
 
@@ -67,6 +73,16 @@ F = ma
 """
 ````
 
+Inline and display examples:
+
+````markdown
+Inline math: $e^{i\pi} + 1 = 0$
+
+```math
+E = mc^2
+```
+````
+
 ### Function Signature
 
 ```elixir
@@ -75,7 +91,8 @@ MDExKatex.attach(document, options \\ []) :: MDEx.Document.t()
 
 **Options:**
 - `:katex_init` - HTML to initialize KaTeX (default: auto-inject CDN script and CSS)
-- `:katex_block_attrs` - Function to generate `<div>` tag attributes
+- `:katex_block_attrs` - Function to generate display math tag attributes
+- `:katex_inline_attrs` - Function to generate inline math tag attributes
 
 ## Common Patterns
 
@@ -89,7 +106,7 @@ html = MDEx.new(markdown: markdown)
 |> MDEx.to_html!()
 ```
 
-This injects the default initialization script (including CSS and JavaScript) and renders all math code blocks.
+This injects the default initialization script (including CSS and JavaScript) and renders both display and inline math.
 
 **For standalone HTML files**, wrap the output in a proper HTML5 document structure:
 
@@ -129,6 +146,20 @@ MDEx.new(markdown: markdown)
 
 **IMPORTANT:** Always include unique IDs in custom block attributes. The sequence number ensures uniqueness.
 
+### Custom Inline Attributes
+
+Inline dollar math uses `:katex_inline_attrs` so inline formulas can avoid block-level classes and styling:
+
+```elixir
+inline_attrs = fn seq ->
+  ~s(id="inline-#{seq}" class="katex-inline custom-inline")
+end
+
+MDEx.new(markdown: "Euler wrote $e^{i\\pi} + 1 = 0$", extension: [math_dollars: true])
+|> MDExKatex.attach(katex_inline_attrs: inline_attrs)
+|> MDEx.to_html!()
+```
+
 ### Phoenix LiveView Integration
 
 For LiveView apps, disable auto-initialization since you'll manage KaTeX in your JS:
@@ -148,6 +179,9 @@ def mount(_params, _session, socket) do
       katex_init: "",  # Don't inject init script
       katex_block_attrs: fn seq ->
         ~s(id="katex-#{seq}" class="katex-block" phx-hook="KaTeXHook" phx-update="ignore")
+      end,
+      katex_inline_attrs: fn seq ->
+        ~s(id="katex-inline-#{seq}" class="katex-inline" phx-hook="KaTeXHook" phx-update="ignore")
       end
     )
     |> MDEx.to_html!()
@@ -158,9 +192,9 @@ end
 
 **Important:** There are TWO different LiveView hook patterns - choose based on your needs.
 
-#### Pattern 1: Individual Hook (Hook on Each Block)
+#### Pattern 1: Individual Hook (Hook on Each Formula Element)
 
-When using `phx-hook="KaTeXHook"` on each individual block, the hook operates on `this.el` directly:
+When using `phx-hook="KaTeXHook"` on each formula element, the hook operates on `this.el` directly:
 
 ```javascript
 // assets/js/app.js
@@ -170,11 +204,12 @@ import 'katex/dist/katex.min.css';
 let hooks = {
   KaTeXHook: {
     mounted() {
-      // Hook is attached TO the katex-block itself
+      // Hook is attached to the formula element itself
       const latex = this.el.dataset.latex;
-      if (latex) {
+      const mathStyle = this.el.dataset.mathStyle;
+      if (latex && mathStyle) {
         katex.render(latex, this.el, {
-          displayMode: true,
+          displayMode: mathStyle === 'display',
           throwOnError: false,
           trust: true
         });
@@ -191,7 +226,7 @@ let liveSocket = new LiveSocket("/live", Socket, {
 
 #### Pattern 2: Global Hook (Hook on Parent Container)
 
-When using `phx-hook="KaTeXGlobalHook"` on a parent container, find all `.katex-block` children:
+When using `phx-hook="KaTeXGlobalHook"` on a parent container, find all math children:
 
 ```elixir
 # Elixir - no phx-hook on individual blocks
@@ -223,13 +258,14 @@ let hooks = {
     },
     renderKatex() {
       // Hook is on parent, find all children
-      const elements = this.el.querySelectorAll('.katex-block');
+      const elements = this.el.querySelectorAll('.katex-block, .katex-inline');
       elements.forEach(el => {
         const latex = el.dataset.latex;
-        if (latex) {
+        const mathStyle = el.dataset.mathStyle;
+        if (latex && mathStyle) {
           el.innerHTML = '';  // Clear previous render
           katex.render(latex, el, {
-            displayMode: true,
+            displayMode: mathStyle === 'display',
             throwOnError: false,
             trust: true
           });
@@ -254,11 +290,12 @@ For pages that require waiting for DOM ready:
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll('.katex-block').forEach(el => {
+    document.querySelectorAll('.katex-block, .katex-inline').forEach(el => {
       const latex = el.dataset.latex;
-      if (latex) {
+      const mathStyle = el.dataset.mathStyle;
+      if (latex && mathStyle) {
         katex.render(latex, el, {
-          displayMode: true,
+          displayMode: mathStyle === 'display',
           throwOnError: false,
           trust: true
         });
@@ -279,7 +316,7 @@ The default rendering uses these KaTeX options:
 
 ```javascript
 {
-  displayMode: true,        // Display mode (centered, large formulas)
+  displayMode: true,        // Per-element, based on data-math-style
   throwOnError: false,      // Render errors as text instead of throwing
   trust: true,              // Allow \url, \includegraphics, etc.
   output: 'htmlAndMathml'   // Generate both HTML and MathML for accessibility
@@ -308,6 +345,26 @@ Always use `phx-update="ignore"` to prevent LiveView from re-rendering formulas:
 
 ```elixir
 fn seq -> ~s(id="katex-#{seq}" class="katex-block" phx-update="ignore") end
+
+fn seq -> ~s(id="katex-inline-#{seq}" class="katex-inline" phx-update="ignore") end
+```
+
+### Style Display and Inline Math Separately
+
+Display math often needs block spacing, while inline math should stay unobtrusive:
+
+```css
+.katex-block {
+  padding: 1rem;
+  margin: 1rem 0;
+  background: #f5f5f5;
+}
+
+.katex-inline {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
 ```
 
 ### CSS is Required
@@ -406,21 +463,25 @@ fn _seq -> ~s(id="katex-1" class="katex-block") end
 fn seq -> ~s(id="katex-#{seq}" class="katex-block") end
 ```
 
-### DON'T: Render without checking for data-latex
+### DON'T: Render without checking for data-latex and data-math-style
 
 ```javascript
-// BAD - doesn't check if data-latex exists
-document.querySelectorAll('.katex-block').forEach(el => {
-  katex.render(el.dataset.latex, el);  // May be undefined
+// BAD - doesn't check required data attributes
+document.querySelectorAll('.katex-block, .katex-inline').forEach(el => {
+  katex.render(el.dataset.latex, el);  // May be undefined or use wrong mode
 });
 ```
 
 **Instead:** Always check for the attribute:
 ```javascript
-document.querySelectorAll('.katex-block').forEach(el => {
+document.querySelectorAll('.katex-block, .katex-inline').forEach(el => {
   const latex = el.dataset.latex;
-  if (latex) {
-    katex.render(latex, el, options);
+  const mathStyle = el.dataset.mathStyle;
+  if (latex && mathStyle) {
+    katex.render(latex, el, {
+      ...options,
+      displayMode: mathStyle === 'display'
+    });
   }
 });
 ```
@@ -440,10 +501,10 @@ fn seq -> ~s(id="katex-#{seq}" class="katex-block" phx-hook="KaTeXHook" phx-upda
 ### DON'T: Use individual hook pattern with querySelectorAll
 
 ```javascript
-// BAD - Hook is on the block itself, not a container
+// BAD - Hook is on the formula element itself, not a container
 KaTeXHook: {
   mounted() {
-    const elements = this.el.querySelectorAll('.katex-block');  // Won't find anything!
+    const elements = this.el.querySelectorAll('.katex-block, .katex-inline');  // Won't find anything!
     elements.forEach(el => {
       katex.render(el.dataset.latex, el);
     });
@@ -457,8 +518,12 @@ KaTeXHook: {
 KaTeXHook: {
   mounted() {
     const latex = this.el.dataset.latex;
-    if (latex) {
-      katex.render(latex, this.el, options);
+    const mathStyle = this.el.dataset.mathStyle;
+    if (latex && mathStyle) {
+      katex.render(latex, this.el, {
+        ...options,
+        displayMode: mathStyle === 'display'
+      });
     }
   }
 }
@@ -469,12 +534,16 @@ KaTeXHook: {
 // GOOD - Hook is on parent container
 KaTeXGlobalHook: {
   mounted() {
-    const elements = this.el.querySelectorAll('.katex-block');
+    const elements = this.el.querySelectorAll('.katex-block, .katex-inline');
     elements.forEach(el => {
       const latex = el.dataset.latex;
-      if (latex) {
+      const mathStyle = el.dataset.mathStyle;
+      if (latex && mathStyle) {
         el.innerHTML = '';  // Clear first for dynamic content
-        katex.render(latex, el, options);
+        katex.render(latex, el, {
+          ...options,
+          displayMode: mathStyle === 'display'
+        });
       }
     });
   }

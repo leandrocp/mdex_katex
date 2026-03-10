@@ -14,7 +14,7 @@ defmodule MDExKatex do
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}]});"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll('.katex-block').forEach(el => {
+      document.querySelectorAll('.katex-block, .katex-inline').forEach(el => {
         const latex = el.dataset.latex;
         const mathStyle = el.dataset.mathStyle;
         if (latex && mathStyle) {
@@ -31,6 +31,7 @@ defmodule MDExKatex do
   """
 
   @type katex_block_attrs :: (seq :: pos_integer() -> String.t())
+  @type katex_inline_attrs :: (seq :: pos_integer() -> String.t())
 
   @doc """
   Attaches the MDExKatex plugin into the MDEx document.
@@ -40,12 +41,13 @@ defmodule MDExKatex do
   - Recognizes both `math` and `katex` code fences, and dollar math when the [extension option](https://hexdocs.pm/mdex/MDEx.Document.html#t:extension_options/0) `math_dollars` is true.
 
   ## Options
-    - `:katex_block_attrs` (`t:katex_block_attrs/0`) - Function that generates the `<div>` tag attributes for math code blocks.
+    - `:katex_block_attrs` (`t:katex_block_attrs/0`) - Function that generates the display math tag attributes for `math`/`katex` code fences and `$$...$$` expressions.
+    - `:katex_inline_attrs` (`t:katex_inline_attrs/0`) - Function that generates the inline math tag attributes for `$...$` expressions.
     - `:katex_init` (`t:String.t/0`) - The HTML tag(s) to inject into the document to initialize KaTeX. If `nil`, the default script is used (see below).
 
   ### :katex_block_attrs
 
-  Whenever a code block tagged as `math` or `katex` is found, it gets converted into a `<div>` tag using the following function to generate its attributes:
+  Whenever a display math node is found, it gets converted into a `<div>` tag using the following function to generate its attributes:
 
 
       block_attrs = fn seq -> ~s(id="katex-\#\{seq}" class="katex-block" phx-update="ignore") end
@@ -53,12 +55,25 @@ defmodule MDExKatex do
 
   Which results in:
 
-      <div id="katex-1" class="katex-block" data-latex="E = mc^2" phx-update="ignore"></div>
+      <div id="katex-1" class="katex-block" data-math-style="display" data-latex="E = mc^2" phx-update="ignore"></div>
 
   You can override it to include or manipulate the attributes but it's important to maintain unique IDs for each instance,
   otherwise the KaTeX rendering will not work correctly, for eg:
 
       fn seq -> ~s(id="katex-\#\{seq}" class="katex-block formula" phx-hook="KaTeXHook" phx-update="ignore") end
+
+  ### :katex_inline_attrs
+
+  Whenever inline dollar math is found, it gets converted into a `<span>` tag using the following function to generate its attributes:
+
+
+      inline_attrs = fn seq -> ~s(id="katex-inline-\#\{seq}" class="katex-inline" phx-update="ignore") end
+      mdex = MDEx.new(markdown: "Euler wrote $e^{i\\pi} + 1 = 0$", extension: [math_dollars: true])
+      |> MDExKatex.attach(katex_inline_attrs: inline_attrs)
+
+  Which results in:
+
+      <p>Euler wrote <span id="katex-inline-1" class="katex-inline" data-math-style="inline" data-latex="e^{i\pi} + 1 = 0" phx-update="ignore"></span></p>
 
   ### :katex_init
 
@@ -70,7 +85,7 @@ defmodule MDExKatex do
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll('.katex-block').forEach(el => {
+      document.querySelectorAll('.katex-block, .katex-inline').forEach(el => {
         const latex = el.dataset.latex;
         const mathStyle = el.dataset.mathStyle;
         if (latex && mathStyle) {
@@ -140,19 +155,16 @@ defmodule MDExKatex do
   let hooks = {
     KaTeXHook: {
       mounted() {
-        const elements = this.el.querySelectorAll(".katex-block");
-        elements.forEach((el) => {
-          const latex = el.dataset.latex;
-          const mathStyle = el.dataset.mathStyle;
-          if (latex && mathStyle) {
-            const displayMode = mathStyle == "display" ? true : false
-            katex.render(latex, el, {
-              displayMode: displayMode,
-              throwOnError: false,
-              trust: true,
-            });
-          }
-        });
+        const latex = this.el.dataset.latex;
+        const mathStyle = this.el.dataset.mathStyle;
+        if (latex && mathStyle) {
+          const displayMode = mathStyle == "display" ? true : false
+          katex.render(latex, this.el, {
+            displayMode: displayMode,
+            throwOnError: false,
+            trust: true,
+          });
+        }
       },
     }
   }
@@ -169,6 +181,9 @@ defmodule MDExKatex do
       katex_init: "", # already initialized
       katex_block_attrs: fn seq ->
         ~s(id="katex-\#\{seq\}" class="katex-block" phx-hook="KaTeXHook" phx-update="ignore")
+      end,
+      katex_inline_attrs: fn seq ->
+        ~s(id="katex-inline-\#\{seq\}" class="katex-inline" phx-hook="KaTeXHook" phx-update="ignore")
       end
     )
     |> MDEx.to_html!()
@@ -182,7 +197,7 @@ defmodule MDExKatex do
 
   ### Custom Styling
 
-  Target the `.katex-block` class:
+  Target `.katex-block` for display math and `.katex-inline` for inline math:
 
   ```css
   .katex-block {
@@ -191,6 +206,11 @@ defmodule MDExKatex do
     background: #f5f5f5;
     border-radius: 4px;
   }
+
+  .katex-inline {
+    padding: 0;
+    background: transparent;
+  }
   ```
   """
   @spec attach(Document.t(), keyword()) :: Document.t()
@@ -198,7 +218,8 @@ defmodule MDExKatex do
     document
     |> Document.register_options([
       :katex_init,
-      :katex_block_attrs
+      :katex_block_attrs,
+      :katex_inline_attrs
     ])
     |> Document.put_options(options)
     |> Document.append_steps(enable_unsafe: &enable_unsafe/1)
@@ -220,6 +241,12 @@ defmodule MDExKatex do
       Document.get_option(document, :katex_block_attrs) ||
         fn seq ->
           ~s(id="katex-#{seq}" class="katex-block" phx-update="ignore")
+        end
+
+    inline_attrs =
+      Document.get_option(document, :katex_inline_attrs) ||
+        fn seq ->
+          ~s(id="katex-inline-#{seq}" class="katex-inline" phx-update="ignore")
         end
 
     {document, _} =
@@ -247,7 +274,7 @@ defmodule MDExKatex do
           escaped_latex = node.literal |> String.trim() |> escape_html()
 
           span =
-            "<span #{block_attrs.(acc)} data-math-style=\"inline\" data-latex=\"#{escaped_latex}\"></span>"
+            "<span #{inline_attrs.(acc)} data-math-style=\"inline\" data-latex=\"#{escaped_latex}\"></span>"
 
           node = %MDEx.HtmlInline{literal: span}
           {node, acc + 1}

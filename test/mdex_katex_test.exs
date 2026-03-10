@@ -156,6 +156,21 @@ defmodule MDExKatexTest do
     refute html =~ ~s(phx-update="ignore")
   end
 
+  test "custom katex_inline_attrs" do
+    markdown = "Euler wrote $e^{i\\pi} + 1 = 0$"
+    inline_attrs = fn seq -> ~s(id="inline-#{seq}" class="math-inline" data-type="inline") end
+
+    html =
+      MDEx.new(markdown: markdown, extension: [math_dollars: true])
+      |> MDExKatex.attach(katex_inline_attrs: inline_attrs)
+      |> MDEx.to_html!()
+
+    assert html =~
+             ~s(<p>Euler wrote <span id="inline-1" class="math-inline" data-type="inline" data-math-style="inline" data-latex="e^{i\\pi} + 1 = 0"></span></p>)
+
+    refute html =~ ~s(class="katex-inline")
+  end
+
   test "HTML entities are escaped to prevent XSS" do
     markdown = """
     ```math
@@ -342,7 +357,7 @@ defmodule MDExKatexTest do
       |> MDEx.to_html!()
 
     assert html =~
-             ~s(<p>This sentence contains inline math: <span id=\"katex-1\" class=\"katex-block\" phx-update=\"ignore\" data-math-style="inline" data-latex=\"y = 2x + 3\"></span></p>)
+             ~s(<p>This sentence contains inline math: <span id=\"katex-inline-1\" class=\"katex-inline\" phx-update=\"ignore\" data-math-style="inline" data-latex=\"y = 2x + 3\"></span></p>)
 
     assert html =~
              ~s(<div id="katex-2" class="katex-block" phx-update="ignore" data-math-style="display" data-latex="y = 2x + 3"></div>)
@@ -365,7 +380,7 @@ defmodule MDExKatexTest do
       |> MDEx.to_html!()
 
     assert html =~
-             ~s(<p>This sentence contains inline math: <span id=\"katex-1\" class=\"katex-block\" phx-update=\"ignore\" data-math-style="inline" data-latex=\"y = 2x + 3\"></span></p>)
+             ~s(<p>This sentence contains inline math: <span id=\"katex-inline-1\" class=\"katex-inline\" phx-update=\"ignore\" data-math-style="inline" data-latex=\"y = 2x + 3\"></span></p>)
 
     assert html =~
              ~s(<div id="katex-2" class="katex-block" phx-update="ignore" data-math-style="display" data-latex="y = 2x + 3"></div>)
