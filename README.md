@@ -62,6 +62,26 @@ MDEx.to_html!(mdex) |> IO.puts()
 # <div id="katex-2" class="katex-block" phx-update="ignore" data-math-style="display" data-latex="x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}"></div>
 ````
 
+To customize KaTeX without replacing the whole init script:
+
+````elixir
+MDEx.new(markdown: markdown)
+|> MDExKatex.attach(katex_options: [trust: false, output: "mathml"])
+|> MDEx.to_html!()
+````
+
+See [KaTeX Options](https://katex.org/docs/options) for the supported render options.
+
+For KaTeX options that require JavaScript functions, pass a raw object expression string:
+
+````elixir
+MDEx.new(markdown: markdown)
+|> MDExKatex.attach(
+  katex_options: "{strict: (errorCode) => 'ignore', trust: (context) => false}"
+)
+|> MDEx.to_html!()
+````
+
 **Note:** `math` and `katex` code fences render as display math. Dollar math is also supported when `MDEx` enables `extension: [math_dollars: true]`; inline formulas use the `.katex-inline` class and display formulas use `.katex-block`.
 
 Quick reference:
