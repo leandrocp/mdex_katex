@@ -8,30 +8,11 @@ defmodule MDExKatex do
 
   alias MDEx.Document
 
-  @default_init """
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}]});"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      document.querySelectorAll('.katex-block, .katex-inline').forEach(el => {
-        const latex = el.dataset.latex;
-        const mathStyle = el.dataset.mathStyle;
-        if (latex && mathStyle) {
-          const displayMode = mathStyle == "display" ? true : false
-          katex.render(latex, el, {
-            displayMode: displayMode,
-            throwOnError: false,
-            trust: true,
-          });
-        }
-      });
-    });
-  </script>
-  """
+  @default_katex_options [throwOnError: false, trust: true]
 
   @type katex_block_attrs :: (seq :: pos_integer() -> String.t())
   @type katex_inline_attrs :: (seq :: pos_integer() -> String.t())
+  @type katex_options :: keyword() | map() | String.t()
 
   @doc """
   Attaches the MDExKatex plugin into the MDEx document.
@@ -43,6 +24,7 @@ defmodule MDExKatex do
   ## Options
     - `:katex_block_attrs` (`t:katex_block_attrs/0`) - Function that generates the display math tag attributes for `math`/`katex` code fences and `$$...$$` expressions.
     - `:katex_inline_attrs` (`t:katex_inline_attrs/0`) - Function that generates the inline math tag attributes for `$...$` expressions.
+    - `:katex_options` (`t:katex_options/0`) - KaTeX render options merged with `displayMode` for each formula. Accepts a keyword list, map, or raw JavaScript object expression. See [KaTeX Options](https://katex.org/docs/options).
     - `:katex_init` (`t:String.t/0`) - The HTML tag(s) to inject into the document to initialize KaTeX. If `nil`, the default script is used (see below).
 
   ### :katex_block_attrs
@@ -103,6 +85,24 @@ defmodule MDExKatex do
 
   That script works well on static documents but you'll need to adjust it to initialize KaTeX in environments
   that requires waiting for the DOM to be ready.
+
+  ### :katex_options
+
+  Use `:katex_options` to customize the options passed to `katex.render/3` without replacing the whole init script:
+
+      mdex =
+        MDEx.new(markdown: markdown)
+        |> MDExKatex.attach(katex_options: [trust: false, output: "mathml"])
+
+  For options that require JavaScript functions, pass a raw object expression string:
+
+      mdex =
+        MDEx.new(markdown: markdown)
+        |> MDExKatex.attach(
+          katex_options: "{strict: (errorCode) => 'ignore', trust: (context) => false}"
+        )
+
+  `displayMode` is always controlled by the markdown node type and overrides any user-provided value.
 
   ## Examples
 
@@ -218,6 +218,7 @@ defmodule MDExKatex do
     document
     |> Document.register_options([
       :katex_init,
+      :katex_options,
       :katex_block_attrs,
       :katex_inline_attrs
     ])
@@ -232,8 +233,33 @@ defmodule MDExKatex do
   end
 
   defp inject_init(document) do
-    init = Document.get_option(document, :katex_init) || @default_init
+    init = Document.get_option(document, :katex_init) || default_init(document)
     Document.put_node_in_document_root(document, %MDEx.HtmlBlock{literal: init}, :top)
+  end
+
+  defp default_init(document) do
+    katex_options =
+      document
+      |> Document.get_option(:katex_options)
+      |> katex_options_to_js()
+
+    """
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}]});"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll('.katex-block, .katex-inline').forEach(el => {
+          const latex = el.dataset.latex;
+          const mathStyle = el.dataset.mathStyle;
+          if (latex && mathStyle) {
+            const displayMode = mathStyle == "display" ? true : false
+            katex.render(latex, el, Object.assign({displayMode: displayMode}, #{katex_options}));
+          }
+        });
+      });
+    </script>
+    """
   end
 
   defp update_code_blocks(document) do
@@ -295,4 +321,44 @@ defmodule MDExKatex do
     |> String.replace("\"", "&quot;")
     |> String.replace("'", "&#39;")
   end
+
+  defp katex_options_to_js(nil), do: encode_js(@default_katex_options)
+  defp katex_options_to_js(options) when is_binary(options), do: options
+
+  defp katex_options_to_js(options) when is_list(options) or is_map(options) do
+    @default_katex_options
+    |> Map.new()
+    |> Map.merge(Map.new(options))
+    |> encode_js()
+  end
+
+  defp encode_js(value) when is_boolean(value), do: to_string(value)
+  defp encode_js(nil), do: "null"
+  defp encode_js(value) when is_integer(value) or is_float(value), do: to_string(value)
+  defp encode_js(value) when is_atom(value), do: encode_js(Atom.to_string(value))
+  defp encode_js(value) when is_binary(value), do: inspect(value)
+
+  defp encode_js(value) when is_list(value) do
+    if Keyword.keyword?(value) do
+      entries =
+        Enum.map_join(value, ", ", fn {key, item} ->
+          "#{encode_js_key(key)}: #{encode_js(item)}"
+        end)
+
+      "{#{entries}}"
+    else
+      items = Enum.map_join(value, ", ", &encode_js/1)
+      "[#{items}]"
+    end
+  end
+
+  defp encode_js(value) when is_map(value) do
+    entries =
+      Enum.map_join(value, ", ", fn {key, item} -> "#{encode_js_key(key)}: #{encode_js(item)}" end)
+
+    "{#{entries}}"
+  end
+
+  defp encode_js_key(key) when is_atom(key), do: inspect(Atom.to_string(key))
+  defp encode_js_key(key) when is_binary(key), do: inspect(key)
 end

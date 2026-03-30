@@ -77,6 +77,47 @@ defmodule MDExKatexTest do
     assert html =~ "katex.render(latex, el"
   end
 
+  test "custom katex_options with keyword list", %{document: document} do
+    document =
+      MDExKatex.attach(document,
+        katex_options: [trust: false, throwOnError: true, output: "mathml"]
+      )
+
+    html = MDEx.to_html!(document)
+
+    assert html =~ "Object.assign({displayMode: displayMode}, {"
+    assert html =~ ~s("output": "mathml")
+    assert html =~ ~s("throwOnError": true)
+    assert html =~ ~s("trust": false)
+  end
+
+  test "custom katex_options with map", %{document: document} do
+    document =
+      MDExKatex.attach(document,
+        katex_options: %{"errorColor" => "#cc0000", :strict => "warn", :maxExpand => 50}
+      )
+
+    html = MDEx.to_html!(document)
+
+    assert html =~ ~s("errorColor": "#cc0000")
+    assert html =~ ~s("strict": "warn")
+    assert html =~ ~s("maxExpand": 50)
+    assert html =~ ~s("throwOnError": false)
+    assert html =~ ~s("trust": true)
+  end
+
+  test "custom katex_options with raw JavaScript", %{document: document} do
+    document =
+      MDExKatex.attach(document,
+        katex_options: "{strict: (errorCode) => 'ignore', trust: (context) => false}"
+      )
+
+    html = MDEx.to_html!(document)
+
+    assert html =~
+             "Object.assign({displayMode: displayMode}, {strict: (errorCode) => 'ignore', trust: (context) => false})"
+  end
+
   test "custom katex_block_attrs", %{document: document} do
     block_attrs = fn seq -> ~s(id="custom-#{seq}" class="formula" data-type="math") end
     document = MDExKatex.attach(document, katex_block_attrs: block_attrs)
