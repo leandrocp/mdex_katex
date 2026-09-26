@@ -223,18 +223,13 @@ defmodule MDExKatex do
       :katex_inline_attrs
     ])
     |> Document.put_options(options)
-    |> Document.append_steps(enable_unsafe: &enable_unsafe/1)
     |> Document.append_steps(inject_init: &inject_init/1)
     |> Document.append_steps(update_code_blocks: &update_code_blocks/1)
   end
 
-  defp enable_unsafe(document) do
-    Document.put_render_options(document, unsafe: true)
-  end
-
   defp inject_init(document) do
     init = Document.get_option(document, :katex_init) || default_init(document)
-    Document.put_node_in_document_root(document, %MDEx.HtmlBlock{literal: init}, :top)
+    Document.put_node_in_document_root(document, %MDEx.Raw{literal: init}, :top)
   end
 
   defp default_init(document) do
@@ -284,7 +279,7 @@ defmodule MDExKatex do
           div =
             "<div #{block_attrs.(acc)} data-math-style=\"display\" data-latex=\"#{escaped_latex}\"></div>"
 
-          node = %MDEx.HtmlBlock{literal: div, nodes: node.nodes}
+          node = %MDEx.Raw{literal: div}
           {node, acc + 1}
 
         %MDEx.Math{dollar_math: true, display_math: true} = node, acc ->
@@ -293,7 +288,7 @@ defmodule MDExKatex do
           div =
             "<div #{block_attrs.(acc)} data-math-style=\"display\" data-latex=\"#{escaped_latex}\"></div>"
 
-          node = %MDEx.HtmlBlock{literal: div}
+          node = %MDEx.Raw{literal: div}
           {node, acc + 1}
 
         %MDEx.Math{dollar_math: true, display_math: false} = node, acc ->
@@ -302,7 +297,7 @@ defmodule MDExKatex do
           span =
             "<span #{inline_attrs.(acc)} data-math-style=\"inline\" data-latex=\"#{escaped_latex}\"></span>"
 
-          node = %MDEx.HtmlInline{literal: span}
+          node = %MDEx.Raw{literal: span}
           {node, acc + 1}
 
         node, acc ->

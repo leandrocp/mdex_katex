@@ -212,6 +212,41 @@ defmodule MDExKatexTest do
     refute html =~ ~s(class="katex-inline")
   end
 
+  test "renders without render: [unsafe: true]", %{document: document} do
+    html = document |> MDExKatex.attach() |> MDEx.to_html!(render: [unsafe: false])
+
+    assert html =~ "cdn.jsdelivr.net/npm/katex"
+
+    assert html =~
+             ~s(<div id="katex-1" class="katex-block" phx-update="ignore" data-math-style="display" data-latex="E = mc^2"></div>)
+  end
+
+  test "inline math renders without render: [unsafe: true]" do
+    html =
+      MDEx.new(markdown: "Euler wrote $e^{i\\pi} + 1 = 0$", extension: [math_dollars: true])
+      |> MDExKatex.attach(katex_init: "")
+      |> MDEx.to_html!(render: [unsafe: false])
+
+    assert html =~
+             ~s(<p>Euler wrote <span id="katex-inline-1" class="katex-inline" phx-update="ignore" data-math-style="inline" data-latex="e^{i\\pi} + 1 = 0"></span></p>)
+  end
+
+  test "keeps raw HTML in the Markdown source omitted" do
+    markdown = """
+    <p>raw html</p>
+
+    ```math
+    E = mc^2
+    ```
+    """
+
+    html = MDEx.new(markdown: markdown) |> MDExKatex.attach(katex_init: "") |> MDEx.to_html!()
+
+    assert html =~ "<!-- raw HTML omitted -->"
+    refute html =~ "<p>raw html</p>"
+    assert html =~ ~s(data-latex="E = mc^2")
+  end
+
   test "HTML entities are escaped to prevent XSS" do
     markdown = """
     ```math
