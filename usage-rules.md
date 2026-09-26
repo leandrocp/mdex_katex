@@ -388,6 +388,16 @@ MDExKatex automatically escapes HTML entities in LaTeX content to prevent XSS at
 # Output: &lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;
 ```
 
+#### How the Plugin Emits HTML
+
+MDExKatex emits its init tags, `<div>`, and `<span>` as `%MDEx.Raw{}` nodes, which MDEx renders
+without `render: [unsafe: true]`. The plugin does not change how MDEx treats HTML written in your
+Markdown source: that HTML stays omitted by default, and rendering it is your decision via
+`render: [unsafe: true]`.
+
+Passing `sanitize:` cleans the plugin's markup too, which strips the init scripts and the
+`data-latex` and `data-math-style` attributes the formulas need.
+
 #### Trust Option
 
 The `trust` option controls access to potentially risky LaTeX commands:
