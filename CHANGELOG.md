@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.0](https://github.com/leandrocp/mdex_katex/compare/v0.2.1...v0.3.0) (2026-10-01)
+
+### Features
+
+- **Breaking:** Emit plugin markup as MDEx.Raw nodes by @leandrocp in [#35](https://github.com/leandrocp/mdex_katex/pull/35)
+
 ## [0.2.1](https://github.com/leandrocp/mdex_katex/compare/v0.2.0...v0.2.1) (2026-03-30)
 
 
